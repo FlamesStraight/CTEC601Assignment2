@@ -11,138 +11,111 @@ public class PressureButtonDoorController : MonoBehaviour
     [Header("Door")]
     public PortalSplitDoorController doorController;
 
-    [Header("Status Screen")]
-    public Renderer statusScreenRenderer;
-    public Material inactiveMaterial; // Red material
-    public Material activeMaterial;   // Blue material
-    public GameObject checkMarkObject;
+    [Header("Status Screen Optional")]
+    public MeshRenderer statusScreenRenderer;
+    public Material redMaterial;
+    public Material blueMaterial;
 
     [Header("Trigger Settings")]
-    public bool playerOnly = true;
+    public bool playerOnly = false;
     public string playerTag = "Player";
+    public string cubeTag = "Cube";
 
     private Vector3 buttonUpPosition;
     private Vector3 buttonDownPosition;
 
-    private bool isPressed = false;
-
-    private readonly HashSet<Collider> collidersOnButton = new HashSet<Collider>();
+    private readonly HashSet<GameObject> pressingObjects = new HashSet<GameObject>();
 
     private void Start()
     {
         if (redButtonVisual != null)
         {
             buttonUpPosition = redButtonVisual.localPosition;
-            buttonDownPosition = buttonUpPosition + new Vector3(0f, -pressDistance, 0f);
+            buttonDownPosition = buttonUpPosition + Vector3.down * pressDistance;
         }
 
-        SetPressedState(false);
+        UpdateButtonState();
     }
 
     private void Update()
     {
+        bool isPressed = pressingObjects.Count > 0;
+
         if (redButtonVisual != null)
         {
             Vector3 targetPosition = isPressed ? buttonDownPosition : buttonUpPosition;
 
-            redButtonVisual.localPosition = Vector3.MoveTowards(
+            redButtonVisual.localPosition = Vector3.Lerp(
                 redButtonVisual.localPosition,
                 targetPosition,
-                buttonMoveSpeed * Time.deltaTime
+                Time.deltaTime * buttonMoveSpeed
             );
         }
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        if (!IsValidPressObject(other)) return;
+        GameObject validObject = GetValidPressingObject(other);
 
-        collidersOnButton.Add(other);
+        if (validObject == null)
+            return;
 
-        if (collidersOnButton.Count > 0)
-        {
-            SetPressedState(true);
-        }
+        pressingObjects.Add(validObject);
+        UpdateButtonState();
     }
 
     private void OnTriggerExit(Collider other)
     {
-        if (!IsValidPressObject(other)) return;
+        GameObject validObject = GetValidPressingObject(other);
 
-        if (collidersOnButton.Contains(other))
-        {
-            collidersOnButton.Remove(other);
-        }
+        if (validObject == null)
+            return;
 
-        if (collidersOnButton.Count == 0)
-        {
-            SetPressedState(false);
-        }
+        pressingObjects.Remove(validObject);
+        UpdateButtonState();
     }
 
-    private bool IsValidPressObject(Collider other)
+    private GameObject GetValidPressingObject(Collider other)
     {
-        if (other == null) return false;
-
-        // Stops the button from detecting its own visual parts.
-        if (other.transform.IsChildOf(transform)) return false;
-
-        if (redButtonVisual != null && other.transform.IsChildOf(redButtonVisual)) return false;
-
-        if (!playerOnly)
-        {
-            return true;
-        }
-
-        if (other.CompareTag(playerTag))
-        {
-            return true;
-        }
-
-        if (other.transform.root != null && other.transform.root.CompareTag(playerTag))
-        {
-            return true;
-        }
-
-        Transform current = other.transform.parent;
+        Transform current = other.transform;
 
         while (current != null)
         {
             if (current.CompareTag(playerTag))
             {
-                return true;
+                return current.gameObject;
+            }
+
+            if (!playerOnly && current.CompareTag(cubeTag))
+            {
+                return current.gameObject;
             }
 
             current = current.parent;
         }
 
-        return false;
+        return null;
     }
 
-    private void SetPressedState(bool pressed)
+    private void UpdateButtonState()
     {
-        isPressed = pressed;
+        bool isPressed = pressingObjects.Count > 0;
 
         if (doorController != null)
         {
-            doorController.SetDoorOpen(pressed);
+            doorController.SetDoorOpen(isPressed);
         }
 
         if (statusScreenRenderer != null)
         {
-            if (pressed && activeMaterial != null)
+            if (isPressed && blueMaterial != null)
             {
-                statusScreenRenderer.material = activeMaterial;
+                statusScreenRenderer.material = blueMaterial;
             }
-            else if (!pressed && inactiveMaterial != null)
+            else if (!isPressed && redMaterial != null)
             {
-                statusScreenRenderer.material = inactiveMaterial;
+                statusScreenRenderer.material = redMaterial;
             }
-        }
-
-        if (checkMarkObject != null)
-        {
-            checkMarkObject.SetActive(pressed);
         }
     }
 }
