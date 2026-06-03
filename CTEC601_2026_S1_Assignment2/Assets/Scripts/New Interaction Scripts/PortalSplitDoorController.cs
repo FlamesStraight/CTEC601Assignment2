@@ -16,6 +16,9 @@ public class PortalSplitDoorController : MonoBehaviour
     [Header("Start State")]
     public bool startOpen = false;
 
+    [Header("Door Sparks")]
+    public ParticleSystem[] doorSparks;
+
     private Vector3 leftClosedPosition;
     private Vector3 rightClosedPosition;
 
@@ -23,6 +26,7 @@ public class PortalSplitDoorController : MonoBehaviour
     private Vector3 rightOpenPosition;
 
     private bool isOpen;
+    private bool previousOpenState;
 
     private void Start()
     {
@@ -39,6 +43,7 @@ public class PortalSplitDoorController : MonoBehaviour
         }
 
         isOpen = startOpen;
+        previousOpenState = isOpen;
 
         if (startOpen)
         {
@@ -51,6 +56,12 @@ public class PortalSplitDoorController : MonoBehaviour
             {
                 rightDoor.localPosition = rightOpenPosition;
             }
+
+            StartSparks();
+        }
+        else
+        {
+            StopSparks();
         }
     }
 
@@ -77,6 +88,20 @@ public class PortalSplitDoorController : MonoBehaviour
                 moveSpeed * Time.deltaTime
             );
         }
+
+        if (isOpen != previousOpenState)
+        {
+            if (isOpen)
+            {
+                StartSparks();
+            }
+            else
+            {
+                StopSparks();
+            }
+
+            previousOpenState = isOpen;
+        }
     }
 
     public void SetDoorOpen(bool open)
@@ -102,5 +127,37 @@ public class PortalSplitDoorController : MonoBehaviour
     public bool IsDoorOpen()
     {
         return isOpen;
+    }
+
+    private void StartSparks()
+    {
+        if (doorSparks == null)
+        {
+            return;
+        }
+
+        foreach (ParticleSystem spark in doorSparks)
+        {
+            if (spark != null && !spark.isPlaying)
+            {
+                spark.Play();
+            }
+        }
+    }
+
+    private void StopSparks()
+    {
+        if (doorSparks == null)
+        {
+            return;
+        }
+
+        foreach (ParticleSystem spark in doorSparks)
+        {
+            if (spark != null)
+            {
+                spark.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+            }
+        }
     }
 }
