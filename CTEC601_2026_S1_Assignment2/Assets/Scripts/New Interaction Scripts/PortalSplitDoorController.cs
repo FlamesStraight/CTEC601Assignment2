@@ -16,7 +16,18 @@ public class PortalSplitDoorController : MonoBehaviour
     [Header("Start State")]
     public bool startOpen = false;
 
-    [Header("Door Sparks")]
+    [Header("Door Open / Close Audio")]
+    public AudioSource doorAudioSource;
+    public AudioClip openSound;
+    public AudioClip closeSound;
+    public float doorSoundVolume = 1f;
+
+    [Header("Electrical Spark Audio")]
+    public AudioSource sparkAudioSource;
+    public AudioClip sparkLoopSound;
+    public float sparkVolume = 0.7f;
+
+    [Header("Door Sparks Optional")]
     public ParticleSystem[] doorSparks;
 
     private Vector3 leftClosedPosition;
@@ -30,6 +41,23 @@ public class PortalSplitDoorController : MonoBehaviour
 
     private void Start()
     {
+        if (doorAudioSource == null)
+        {
+            doorAudioSource = GetComponent<AudioSource>();
+        }
+
+        if (sparkAudioSource != null)
+        {
+            sparkAudioSource.playOnAwake = false;
+            sparkAudioSource.loop = true;
+            sparkAudioSource.volume = sparkVolume;
+
+            if (sparkLoopSound != null)
+            {
+                sparkAudioSource.clip = sparkLoopSound;
+            }
+        }
+
         if (leftDoor != null)
         {
             leftClosedPosition = leftDoor.localPosition;
@@ -58,10 +86,12 @@ public class PortalSplitDoorController : MonoBehaviour
             }
 
             StartSparks();
+            StartSparkSound();
         }
         else
         {
             StopSparks();
+            StopSparkSound();
         }
     }
 
@@ -69,22 +99,22 @@ public class PortalSplitDoorController : MonoBehaviour
     {
         if (leftDoor != null)
         {
-            Vector3 targetPosition = isOpen ? leftOpenPosition : leftClosedPosition;
+            Vector3 targetLeftPosition = isOpen ? leftOpenPosition : leftClosedPosition;
 
             leftDoor.localPosition = Vector3.MoveTowards(
                 leftDoor.localPosition,
-                targetPosition,
+                targetLeftPosition,
                 moveSpeed * Time.deltaTime
             );
         }
 
         if (rightDoor != null)
         {
-            Vector3 targetPosition = isOpen ? rightOpenPosition : rightClosedPosition;
+            Vector3 targetRightPosition = isOpen ? rightOpenPosition : rightClosedPosition;
 
             rightDoor.localPosition = Vector3.MoveTowards(
                 rightDoor.localPosition,
-                targetPosition,
+                targetRightPosition,
                 moveSpeed * Time.deltaTime
             );
         }
@@ -93,11 +123,15 @@ public class PortalSplitDoorController : MonoBehaviour
         {
             if (isOpen)
             {
+                PlayDoorSound(openSound);
                 StartSparks();
+                StartSparkSound();
             }
             else
             {
+                PlayDoorSound(closeSound);
                 StopSparks();
+                StopSparkSound();
             }
 
             previousOpenState = isOpen;
@@ -129,6 +163,55 @@ public class PortalSplitDoorController : MonoBehaviour
         return isOpen;
     }
 
+    private void PlayDoorSound(AudioClip clip)
+    {
+        if (doorAudioSource == null)
+        {
+            return;
+        }
+
+        if (clip == null)
+        {
+            return;
+        }
+
+        doorAudioSource.PlayOneShot(clip, doorSoundVolume);
+    }
+
+    private void StartSparkSound()
+    {
+        if (sparkAudioSource == null)
+        {
+            return;
+        }
+
+        if (sparkLoopSound != null)
+        {
+            sparkAudioSource.clip = sparkLoopSound;
+        }
+
+        sparkAudioSource.volume = sparkVolume;
+        sparkAudioSource.loop = true;
+
+        if (!sparkAudioSource.isPlaying)
+        {
+            sparkAudioSource.Play();
+        }
+    }
+
+    private void StopSparkSound()
+    {
+        if (sparkAudioSource == null)
+        {
+            return;
+        }
+
+        if (sparkAudioSource.isPlaying)
+        {
+            sparkAudioSource.Stop();
+        }
+    }
+
     private void StartSparks()
     {
         if (doorSparks == null)
@@ -156,7 +239,7 @@ public class PortalSplitDoorController : MonoBehaviour
         {
             if (spark != null)
             {
-                spark.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+                spark.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             }
         }
     }

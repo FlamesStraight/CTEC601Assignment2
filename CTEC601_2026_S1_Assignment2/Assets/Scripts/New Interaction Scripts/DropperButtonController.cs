@@ -14,10 +14,15 @@ public class DropperButtonController : MonoBehaviour
     public Transform redButtonVisual;
     public float pressDistance = 0.08f;
     public float buttonMoveSpeed = 8f;
-    public float buttonStayDownTime = 0.3f;
+    public float buttonStayDownTime = 2f;
 
     [Header("Dropper Barrier")]
     public GameObject hiddenBarrier;
+
+    [Header("Sound Effects")]
+    public AudioSource audioSource;
+    public AudioClip buttonPressSound;
+    public AudioClip buttonReleaseSound;
 
     [Header("Settings")]
     public bool singleUse = true;
@@ -41,6 +46,11 @@ public class DropperButtonController : MonoBehaviour
         if (hiddenBarrier != null)
         {
             hiddenBarrier.SetActive(true);
+        }
+
+        if (audioSource == null)
+        {
+            audioSource = GetComponent<AudioSource>();
         }
     }
 
@@ -89,6 +99,8 @@ public class DropperButtonController : MonoBehaviour
     {
         isPressing = true;
 
+        PlaySound(buttonPressSound);
+
         yield return MoveButton(pressedButtonLocalPosition);
 
         if (hiddenBarrier != null)
@@ -106,6 +118,8 @@ public class DropperButtonController : MonoBehaviour
         yield return new WaitForSeconds(buttonStayDownTime);
 
         yield return MoveButton(originalButtonLocalPosition);
+
+        PlaySound(buttonReleaseSound);
 
         if (singleUse)
         {
@@ -135,6 +149,17 @@ public class DropperButtonController : MonoBehaviour
         }
 
         redButtonVisual.localPosition = targetLocalPosition;
+    }
+
+    private void PlaySound(AudioClip clip)
+    {
+        if (audioSource == null)
+            return;
+
+        if (clip == null)
+            return;
+
+        audioSource.PlayOneShot(clip);
     }
 
     private void OnTriggerEnter(Collider other)

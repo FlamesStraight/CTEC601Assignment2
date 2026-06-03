@@ -15,6 +15,13 @@ public class PressureButtonDoorController : MonoBehaviour
     public MeshRenderer statusScreenRenderer;
     public Material redMaterial;
     public Material blueMaterial;
+    public GameObject checkMarkObject;
+
+    [Header("Sound Effects")]
+    public AudioSource audioSource;
+    public AudioClip buttonPressSound;
+    public AudioClip buttonReleaseSound;
+    public float soundVolume = 1f;
 
     [Header("Trigger Settings")]
     public bool playerOnly = false;
@@ -24,33 +31,29 @@ public class PressureButtonDoorController : MonoBehaviour
     private Vector3 buttonUpPosition;
     private Vector3 buttonDownPosition;
 
+    private bool isPressed = false;
+
     private readonly HashSet<GameObject> pressingObjects = new HashSet<GameObject>();
 
     private void Start()
     {
+        if (audioSource == null)
+        {
+            audioSource = GetComponent<AudioSource>();
+        }
+
         if (redButtonVisual != null)
         {
             buttonUpPosition = redButtonVisual.localPosition;
             buttonDownPosition = buttonUpPosition + Vector3.down * pressDistance;
         }
 
-        UpdateButtonState();
+        UpdateButtonState(false, false);
     }
 
     private void Update()
     {
-        bool isPressed = pressingObjects.Count > 0;
-
-        if (redButtonVisual != null)
-        {
-            Vector3 targetPosition = isPressed ? buttonDownPosition : buttonUpPosition;
-
-            redButtonVisual.localPosition = Vector3.Lerp(
-                redButtonVisual.localPosition,
-                targetPosition,
-                Time.deltaTime * buttonMoveSpeed
-            );
-        }
+        MoveButtonVisual();
     }
 
     private void OnTriggerEnter(Collider other)
@@ -58,10 +61,14 @@ public class PressureButtonDoorController : MonoBehaviour
         GameObject validObject = GetValidPressingObject(other);
 
         if (validObject == null)
+        {
             return;
+        }
 
         pressingObjects.Add(validObject);
-        UpdateButtonState();
+
+        bool shouldBePressed = pressingObjects.Count > 0;
+        UpdateButtonState(shouldBePressed, true);
     }
 
     private void OnTriggerExit(Collider other)
@@ -69,10 +76,17 @@ public class PressureButtonDoorController : MonoBehaviour
         GameObject validObject = GetValidPressingObject(other);
 
         if (validObject == null)
+        {
             return;
+        }
 
-        pressingObjects.Remove(validObject);
-        UpdateButtonState();
+        if (pressingObjects.Contains(validObject))
+        {
+            pressingObjects.Remove(validObject);
+        }
+
+        bool shouldBePressed = pressingObjects.Count > 0;
+        UpdateButtonState(shouldBePressed, true);
     }
 
     private GameObject GetValidPressingObject(Collider other)
@@ -97,9 +111,14 @@ public class PressureButtonDoorController : MonoBehaviour
         return null;
     }
 
-    private void UpdateButtonState()
+    private void UpdateButtonState(bool pressed, bool playSound)
     {
-        bool isPressed = pressingObjects.Count > 0;
+        if (isPressed == pressed)
+        {
+            return;
+        }
+
+        isPressed = pressed;
 
         if (doorController != null)
         {
@@ -117,5 +136,53 @@ public class PressureButtonDoorController : MonoBehaviour
                 statusScreenRenderer.material = redMaterial;
             }
         }
+
+        if (checkMarkObject != null)
+        {
+            checkMarkObject.SetActive(isPressed);
+        }
+
+        if (playSound)
+        {
+            if (isPressed)
+            {
+                PlaySound(buttonPressSound);
+            }
+            else
+            {
+                PlaySound(buttonReleaseSound);
+            }
+        }
+    }
+
+    private void MoveButtonVisual()
+    {
+        if (redButtonVisual == null)
+        {
+            return;
+        }
+
+        Vector3 targetPosition = isPressed ? buttonDownPosition : buttonUpPosition;
+
+        redButtonVisual.localPosition = Vector3.MoveTowards(
+            redButtonVisual.localPosition,
+            targetPosition,
+            buttonMoveSpeed * Time.deltaTime
+        );
+    }
+
+    private void PlaySound(AudioClip clip)
+    {
+        if (audioSource == null)
+        {
+            return;
+        }
+
+        if (clip == null)
+        {
+            return;
+        }
+
+        audioSource.PlayOneShot(clip, soundVolume);
     }
 }
